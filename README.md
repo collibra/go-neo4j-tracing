@@ -1,17 +1,22 @@
-# RAITO - Neo4J Tracing
+# Neo4J Tracing
 
-![Version](https://img.shields.io/github/v/tag/raito-io/neo4j-tracing?sort=semver&label=version&color=651FFF)
-[![Build](https://img.shields.io/github/actions/workflow/status/raito-io/go-dynamo-utils/build.yml?branch=main)](https://github.com/raito-io/go-dynamo-utils/actions/workflows/build.yml)
-[![Contribute](https://img.shields.io/badge/Contribute-🙌-green.svg)](/CONTRIBUTING.md)
-[![Go version](https://img.shields.io/github/go-mod/go-version/raito-io/neo4j-tracing?color=7fd5ea)](https://golang.org/)
-[![Software License](https://img.shields.io/badge/license-Apache%202-brightgreen.svg?label=license)](/LICENSE)
-[![Go Reference](https://pkg.go.dev/badge/github.com/raito-io/neo4j-tracing.svg)](https://pkg.go.dev/github.com/raito-io/neo4j-tracing)
+[//]: # (![Version]&#40;https://img.shields.io/github/v/tag/raito-io/neo4j-tracing?sort=semver&label=version&color=651FFF&#41;)
+
+[//]: # ([![Build]&#40;https://img.shields.io/github/actions/workflow/status/raito-io/go-dynamo-utils/build.yml?branch=main&#41;]&#40;https://github.com/raito-io/go-dynamo-utils/actions/workflows/build.yml&#41;)
+
+[//]: # ([![Contribute]&#40;https://img.shields.io/badge/Contribute-🙌-green.svg&#41;]&#40;/CONTRIBUTING.md&#41;)
+
+[//]: # ([![Go version]&#40;https://img.shields.io/github/go-mod/go-version/raito-io/neo4j-tracing?color=7fd5ea&#41;]&#40;https://golang.org/&#41;)
+
+[//]: # ([![Software License]&#40;https://img.shields.io/badge/license-Apache%202-brightgreen.svg?label=license&#41;]&#40;/LICENSE&#41;)
+
+[//]: # ([![Go Reference]&#40;https://pkg.go.dev/badge/github.com/raito-io/neo4j-tracing.svg&#41;]&#40;https://pkg.go.dev/github.com/raito-io/neo4j-tracing&#41;)
 
 ## Introduction
 `neo4jtracing` is a go library that enables otel distribute tracing for neo4j driver v5. 
 
 ## Getting Started
-Add this library as a dependency via `go get github.com/raito-io/neo4j-tracing`
+Add this library as a dependency via `go get github.com/collibra/go-neo4j-tracing`
 
 ## Enable tracing
 Tracing can be enabled by using the `neo4j_tracing.Neo4jTracer` object. 
@@ -41,7 +46,7 @@ package main
 
 import (
     "github.com/neo4j/neo4j-go-driver/v5/neo4j"
-    neo4j_tracing "github.com/raito-io/neo4j-tracing"
+    neo4j_tracing "github.com/collibra/go-neo4j-tracing"
 )
 
 func main() {

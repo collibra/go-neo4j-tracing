@@ -50,3 +50,8 @@ jobs:
 #        env:
 #          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
 #          SONAR_HOST_URL: https://sonarqube.collibra.dev
+
+      - name: FOSSA Scan
+        uses: fossas/fossa-action@v1
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}

@@ -26,6 +26,9 @@
       "major-dependency-update"
     ]
   },
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
   "prHourlyLimit": 10,
   "rebaseWhen": "behind-base-branch",
   "reviewersSampleSize": 1,

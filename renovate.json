@@ -8,6 +8,7 @@
   "dependencyDashboard": false,
   "extends": [
     "config:recommended",
+    "group:allNonMajor",
     ":semanticCommitScopeDisabled",
     ":semanticCommitTypeAll(deps)",
     "monorepo:aws-sdk-go-v2",

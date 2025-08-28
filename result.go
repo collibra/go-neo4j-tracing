@@ -48,6 +48,7 @@ func (r *ResultWithContextTracer) Peek(ctx context.Context) bool {
 
 func (r *ResultWithContextTracer) Collect(ctx context.Context) (_ []*neo4j.Record, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Collect"), trace.WithSpanKind(trace.SpanKindInternal))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -62,6 +63,7 @@ func (r *ResultWithContextTracer) Collect(ctx context.Context) (_ []*neo4j.Recor
 
 func (r *ResultWithContextTracer) Single(ctx context.Context) (_ *neo4j.Record, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Single"), trace.WithSpanKind(trace.SpanKindInternal))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -76,6 +78,7 @@ func (r *ResultWithContextTracer) Single(ctx context.Context) (_ *neo4j.Record, 
 
 func (r *ResultWithContextTracer) Consume(ctx context.Context) (_ neo4j.ResultSummary, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Consume"), trace.WithSpanKind(trace.SpanKindInternal))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)

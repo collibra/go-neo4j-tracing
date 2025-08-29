@@ -28,6 +28,7 @@ func NewManagedTransactionTracer(ctx context.Context, tx neo4j.ManagedTransactio
 // Run calls neo4j.ManagedTransaction.Run and trace the call
 func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.ResultWithContext, err error) {
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -63,6 +64,7 @@ func NewExplicitTransactionTracer(ctx context.Context, tx neo4j.ExplicitTransact
 // Run calls neo4j.ExplicitTransaction.Run and trace the call
 func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.ResultWithContext, err error) {
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -80,6 +82,7 @@ func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, para
 // Commit calls neo4j.ExplicitTransaction.Commit and trace the call
 func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
 	_, span := t.tracer.Start(t.ctx, spanName("Commit"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBSystemNeo4j))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -95,6 +98,7 @@ func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
 // Rollback calls neo4j.ExplicitTransaction.Rollback and trace the call
 func (t *ExplicitTransactionTracer) Rollback(ctx context.Context) (err error) {
 	_, span := t.tracer.Start(t.ctx, spanName("Rollback"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBSystemNeo4j))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)

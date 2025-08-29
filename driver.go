@@ -80,6 +80,7 @@ func (n *DriverWithContextTracer) NewSession(ctx context.Context, config neo4j.S
 // VerifyConnectivity calls neo4j.DriverWithContext.VerifyConnectivity and trace the call
 func (n *DriverWithContextTracer) VerifyConnectivity(ctx context.Context) (err error) {
 	spanCtx, span := n.tracer.Start(ctx, spanName("VerifyConnectivity"), trace.WithSpanKind(trace.SpanKindClient))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -95,6 +96,7 @@ func (n *DriverWithContextTracer) VerifyConnectivity(ctx context.Context) (err e
 // VerifyAuthentication calls neo4j.DriverWithContext.VerifyAuthentication and trace the call
 func (n *DriverWithContextTracer) VerifyAuthentication(ctx context.Context, auth *neo4j.AuthToken) (err error) {
 	spanCtx, span := n.tracer.Start(ctx, spanName("VerifyAuthentication"), trace.WithSpanKind(trace.SpanKindClient))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -110,6 +112,7 @@ func (n *DriverWithContextTracer) VerifyAuthentication(ctx context.Context, auth
 // GetServerInfo calls neo4j.GetServerInfo.VerifyConnectivity and trace the call
 func (n *DriverWithContextTracer) GetServerInfo(ctx context.Context) (_ neo4j.ServerInfo, err error) {
 	spanCtx, span := n.tracer.Start(ctx, spanName("GetServerInfo"), trace.WithSpanKind(trace.SpanKindClient))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)

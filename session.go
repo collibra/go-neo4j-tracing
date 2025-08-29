@@ -70,6 +70,7 @@ func (s *SessionWithContextTracer) execute(ctx context.Context,
 	spanOperation string, f func(ctx context.Context, work neo4j.ManagedTransactionWork, configurers ...func(config *neo4j.TransactionConfig)) (any, error),
 	work neo4j.ManagedTransactionWork, configurers ...func(config *neo4j.TransactionConfig)) (_ any, err error) {
 	spanCtx, span := s.tracer.Start(ctx, spanName(spanOperation), trace.WithSpanKind(trace.SpanKindClient))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -95,6 +96,7 @@ func (s *SessionWithContextTracer) execute(ctx context.Context,
 // Run calls neo4j.SessionWithContext.Run and trace the call
 func (s *SessionWithContextTracer) Run(ctx context.Context, cypher string, params map[string]any, configurers ...func(config *neo4j.TransactionConfig)) (_ neo4j.ResultWithContext, err error) {
 	spanCtx, span := s.tracer.Start(ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
+
 	defer func() {
 		if err != nil {
 			span.RecordError(err)

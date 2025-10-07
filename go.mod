@@ -1,6 +1,6 @@
 module github.com/collibra/go-neo4j-tracing
 
-go 1.25.1
+go 1.25.2
 
 require (
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4

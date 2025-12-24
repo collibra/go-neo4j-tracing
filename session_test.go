@@ -7,6 +7,7 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -122,16 +123,18 @@ func TestSessionTracer_BeginTransaction(t *testing.T) {
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError, err)
 				assert.Nil(t, tx)
+
 				spans := sr.Ended()
 				assert.Len(t, spans, 1)
 				assert.Equal(t, "Session.BeginTransaction", spans[0].Name())
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, tx)
 				// The span is ended by tx.Close(), so we can't check it here.
 				// We'll test that in the transaction tests.
 				tx.Close(t.Context())
+
 				spans := sr.Ended()
 				assert.Len(t, spans, 1)
 				assert.Equal(t, "Session.BeginTransaction", spans[0].Name())
@@ -193,12 +196,15 @@ func TestSessionTracer_ExecuteRead(t *testing.T) {
 			val, err := sessionTracer.ExecuteRead(t.Context(), work)
 
 			assert.Equal(t, tt.expectedError, err)
+
 			if tt.expectedError == nil {
 				assert.Equal(t, tt.expectedValue, val)
 			}
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.ExecuteRead", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}
@@ -258,12 +264,15 @@ func TestSessionTracer_ExecuteWrite(t *testing.T) {
 			val, err := sessionTracer.ExecuteWrite(t.Context(), work)
 
 			assert.Equal(t, tt.expectedError, err)
+
 			if tt.expectedError == nil {
 				assert.Equal(t, tt.expectedValue, val)
 			}
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.ExecuteWrite", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}

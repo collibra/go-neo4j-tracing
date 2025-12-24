@@ -6,6 +6,7 @@ func Test_spanName(t *testing.T) {
 	type args struct {
 		operation string
 	}
+
 	tests := []struct {
 		name string
 		args args

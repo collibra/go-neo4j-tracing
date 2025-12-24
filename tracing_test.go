@@ -11,6 +11,7 @@ import (
 // mockDriver is a mock implementation of the neo4j.Driver interface for testing.
 type mockDriver struct {
 	neo4j.Driver
+
 	newSessionFunc           func(ctx context.Context, config neo4j.SessionConfig) neo4j.Session
 	verifyConnectivityFunc   func(ctx context.Context) error
 	verifyAuthenticationFunc func(ctx context.Context, auth *neo4j.AuthToken) error
@@ -56,6 +57,7 @@ func (m *mockDriver) Close(ctx context.Context) error {
 // mockSession is a mock implementation of the neo4j.Session interface for testing.
 type mockSession struct {
 	neo4j.Session
+
 	beginTransactionFunc func(ctx context.Context, configurers ...func(config *neo4j.TransactionConfig)) (neo4j.ExplicitTransaction, error)
 	executeReadFunc      func(ctx context.Context, work neo4j.ManagedTransactionWork, configurers ...func(config *neo4j.TransactionConfig)) (any, error)
 	executeWriteFunc     func(ctx context.Context, work neo4j.ManagedTransactionWork, configurers ...func(config *neo4j.TransactionConfig)) (any, error)
@@ -109,6 +111,7 @@ func (m *mockSession) Close(ctx context.Context) error {
 // mockResult is a mock implementation of the neo4j.Result interface for testing.
 type mockResult struct {
 	neo4j.Result
+
 	nextRecordFunc func(ctx context.Context, record **neo4j.Record) bool
 	nextFunc       func(ctx context.Context) bool
 	peekRecordFunc func(ctx context.Context, record **neo4j.Record) bool
@@ -202,6 +205,7 @@ func (m *mockResult) IsOpen() bool {
 // mockManagedTransaction is a mock implementation of the neo4j.ManagedTransaction interface for testing.
 type mockManagedTransaction struct {
 	neo4j.ManagedTransaction
+
 	runFunc func(ctx context.Context, cypher string, params map[string]any) (neo4j.Result, error)
 }
 
@@ -215,6 +219,7 @@ func (m *mockManagedTransaction) Run(ctx context.Context, cypher string, params 
 // mockExplicitTransaction is a mock implementation of the neo4j.ExplicitTransaction interface for testing.
 type mockExplicitTransaction struct {
 	neo4j.ExplicitTransaction
+
 	runFunc      func(ctx context.Context, cypher string, params map[string]any) (neo4j.Result, error)
 	commitFunc   func(ctx context.Context) error
 	rollbackFunc func(ctx context.Context) error
@@ -270,48 +275,6 @@ func (m *mockServerInfo) Database() neo4j.DatabaseInfo {
 	return &mockDatabaseInfo{}
 }
 
-// mockRecord is a mock implementation of neo4j.Record.
-type mockRecord struct {
-	neo4j.Record
-}
-
-func (m *mockRecord) Keys() []string {
-	return nil
-}
-
-func (m *mockRecord) Values() []any {
-	return nil
-}
-
-func (m *mockRecord) Get(key string) (any, bool) {
-	return nil, false
-}
-
-func (m *mockRecord) GetByIndex(index int) (any, bool) {
-	return nil, false
-}
-
-// mockBookmarkManager is a mock implementation of the neo4j.BookmarkManager interface for testing.
-type mockBookmarkManager struct {
-	neo4j.BookmarkManager
-	getBookmarks   func(ctx context.Context) (neo4j.Bookmarks, error)
-	updateBookmark func(ctx context.Context, bookmarks neo4j.Bookmarks) error
-}
-
-func (m *mockBookmarkManager) GetBookmarks(ctx context.Context) (neo4j.Bookmarks, error) {
-	if m.getBookmarks != nil {
-		return m.getBookmarks(ctx)
-	}
-	return nil, nil
-}
-
-func (m *mockBookmarkManager) UpdateBookmarks(ctx context.Context, bookmarks neo4j.Bookmarks) error {
-	if m.updateBookmark != nil {
-		return m.updateBookmark(ctx, bookmarks)
-	}
-	return nil
-}
-
 // mockResultSummary is a mock implementation of the neo4j.ResultSummary interface for testing.
 type mockResultSummary struct {
 	neo4j.ResultSummary
@@ -341,7 +304,7 @@ func (m *mockResultSummary) Profile() neo4j.ProfiledPlan {
 	return nil
 }
 
-func (m *mockResultSummary) Notifications() []neo4j.Notification {
+func (m *mockResultSummary) Notifications() []neo4j.Notification { //nolint:staticcheck
 	return nil
 }
 

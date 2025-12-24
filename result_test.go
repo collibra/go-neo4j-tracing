@@ -60,6 +60,7 @@ func TestResultTracer_NextRecord(t *testing.T) {
 			res := resultTracer.NextRecord(t.Context(), &record)
 
 			assert.Equal(t, tt.expected, res)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.NextRecord", spans[0].Name())
@@ -106,6 +107,7 @@ func TestResultTracer_Next(t *testing.T) {
 			res := resultTracer.Next(t.Context())
 
 			assert.Equal(t, tt.expected, res)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.Next", spans[0].Name())
@@ -153,6 +155,7 @@ func TestResultTracer_PeekRecord(t *testing.T) {
 			res := resultTracer.PeekRecord(t.Context(), &record)
 
 			assert.Equal(t, tt.expected, res)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.PeekRecord", spans[0].Name())
@@ -199,6 +202,7 @@ func TestResultTracer_Peek(t *testing.T) {
 			res := resultTracer.Peek(t.Context())
 
 			assert.Equal(t, tt.expected, res)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.Peek", spans[0].Name())
@@ -246,9 +250,11 @@ func TestResultTracer_Collect(t *testing.T) {
 			_, err := resultTracer.Collect(t.Context())
 
 			assert.Equal(t, tt.expectedError, err)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.Collect", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}
@@ -296,9 +302,11 @@ func TestResultTracer_Single(t *testing.T) {
 			_, err := resultTracer.Single(t.Context())
 
 			assert.Equal(t, tt.expectedError, err)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.Single", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}
@@ -345,9 +353,11 @@ func TestResultTracer_Consume(t *testing.T) {
 			_, err := resultTracer.Consume(t.Context())
 
 			assert.Equal(t, tt.expectedError, err)
+
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.Record.Consume", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}

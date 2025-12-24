@@ -42,18 +42,18 @@ func TestDriverTracer_NewSession(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		config neo4j.SessionConfig
+		name           string
+		config         neo4j.SessionConfig
 		expectedDBName string
 	}{
 		{
-			name: "with database name",
-			config: neo4j.SessionConfig{DatabaseName: "testdb"},
+			name:           "with database name",
+			config:         neo4j.SessionConfig{DatabaseName: "testdb"},
 			expectedDBName: "testdb",
 		},
 		{
-			name: "without database name",
-			config: neo4j.SessionConfig{},
+			name:           "without database name",
+			config:         neo4j.SessionConfig{},
 			expectedDBName: "",
 		},
 	}
@@ -116,6 +116,7 @@ func TestDriverTracer_VerifyConnectivity(t *testing.T) {
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.VerifyConnectivity", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}
@@ -170,6 +171,7 @@ func TestDriverTracer_VerifyAuthentication(t *testing.T) {
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.VerifyAuthentication", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}
@@ -224,6 +226,7 @@ func TestDriverTracer_GetServerInfo(t *testing.T) {
 			spans := sr.Ended()
 			assert.Len(t, spans, 1)
 			assert.Equal(t, "neo4j.GetServerInfo", spans[0].Name())
+
 			if tt.expectedError != nil {
 				assert.Equal(t, tt.expectedError.Error(), spans[0].Events()[0].Attributes[1].Value.AsString())
 			}

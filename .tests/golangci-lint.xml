@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<checkstyle version="5.0">
+  <file name="driver_test.go">
+    <error column="1" line="45" message="File is not properly formatted" severity="error" source="gofmt"></error>
+  </file>
+  <file name="tracing_test.go">
+    <error column="2" line="13" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+    <error column="2" line="58" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+    <error column="2" line="111" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+    <error column="2" line="204" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+    <error column="2" line="217" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+    <error column="2" line="296" message="there must be an empty line separating embedded fields from regular fields" severity="error" source="embeddedstructfieldcheck"></error>
+  </file>
+</checkstyle>

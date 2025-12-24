@@ -2,7 +2,7 @@ version: "2"
 run:
   modules-download-mode: readonly
   issues-exit-code: 1
-  tests: false
+  tests: true
 output:
   formats:
     text:
@@ -10,57 +10,190 @@ output:
       print-linter-name: true
       print-issued-lines: true
       colors: true
+    checkstyle:
+      # Output path can be either `stdout`, `stderr` or path to the file to write to.
+      # Default: stdout
+      path: .tests/golangci-lint.xml
+
   path-prefix: ""
 linters:
   default: none
   enable:
+    - asasalint
+    - asciicheck
+    - bidichk
     - bodyclose
+    - copyloopvar
+    - cyclop
+    #- depguard #We should create a correct config to enabe depguard
     - dogsled
     - dupl
+    - embeddedstructfieldcheck
     - errcheck
+    - errorlint
     - exhaustive
+    - exptostd
     - forbidigo
     - goconst
     - gocritic
     - gocyclo
     - gosec
     - govet
+    - grouper
     - ineffassign
+    - intrange
     - misspell
+    - modernize
+    # - mnd # Magic numbers should be fixed and enable gomnd,
     - nakedret
+    - nilerr
     - nolintlint
     - prealloc
     - predeclared
+    - promlinter
+    - reassign
     - revive
-    - sqlclosecheck
     - staticcheck
+    - testifylint
     - thelper
     - tparallel
     - unconvert
     - unparam
     - unused
+    - usestdlibvars
+    - wastedassign
     - whitespace
+    # - wrapcheck # TODO: A separate ticket is created to enable wrapcheck linter as this will require quite some changes (Jira: DEV-141302)
     - wsl_v5
+  #    - wsl # TODO: Collibra: This is disabled temporarily so we can comment out code while doing the lift and shift to CHI (Jira: DEV-135346)
   settings:
-    wsl_v5:
-      allow-first-in-block: true
-      allow-whole-block: false
-      branch-max-lines: 2
-      disable:
+    cyclop:
+      max-complexity: 20
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - dupImport
+        - octalLiteral
+        - whyNoLint
+        - importShadow # not important for now
+        - unnamedResult # not important for now
+        - hugeParam # TODO
+        #        - commentFormatting
+        - paramTypeCombine
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      settings:
+        ifElseChain:
+          minThreshold: 3
+    govet:
+      enable:
+        - appends
+        - asmdecl
         - assign
-        - decl
+        - atomic
+        - atomicalign
+        - bools
+        - buildtag
+        - cgocall
+        - composites
+        - copylocks
+        - deepequalerrors
+        - defers
+        - directive
+        - errorsas
+        - findcall
+        - framepointer
+        - httpresponse
+        - ifaceassert
+        - loopclosure
+        - lostcancel
+        - nilfunc
+        - printf
+        - reflectvaluecompare
+        - shadow
+        - shift
+        - sigchanyzer
+        - slog
+        - sortslice
+        - stdmethods
+        - stringintconv
+        - structtag
+        - testinggoroutine
+        - tests
+        - unmarshal
+        - unreachable
+        - unsafeptr
+        - unusedresult
+        - unusedwrite
+    exhaustive:
+      default-signifies-exhaustive: true
+    mnd:
+      ignored-functions:
+        - math.* # Magic number generation, should be fixed and removed?
+    nolintlint:
+      allow-unused: true
+      require-explanation: false
+      require-specific: false
+    predeclared:
+      ignore:
+        - error
     revive:
       rules:
-        - name: var-naming
-          arguments:
-            - []
-            - []
-            - - skipPackageNameChecks: true
+        - name: exported
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - -ST1003
+        - -SA4023 # TODO: Collibra: This is added temporarily to allow trailing comments in the code. (Jira: DEV-135346)
+    wsl_v5:
+      branch-max-lines: 5
+      disable:
+        - decl
+        - send
+      # TODO: Collibra: This is added temporarily to allow trailing comments in the code. (Jira: DEV-135346)
+    #      allow-trailing-comment: true
 
+    wrapcheck:
+      ignore-package-globs:
+        - github.com/collibra/data-access-backend/internal/shared/gerror
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: string `email` has (\d+) occurrences, make it a constant
+      - path: (.+)_test\.go$
+        linters:
+          - goconst
+          - dupl
+          - cyclop
+    paths:
+      - (.+)wire_gen\.go
+      - internal/graphql/generated/generated.go
+      - third_party$
+      - builtin$
+      - examples$
 issues:
   uniq-by-line: false
   max-same-issues: 0
 formatters:
   enable:
     - gofmt
-    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

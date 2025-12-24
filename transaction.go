@@ -3,7 +3,7 @@ package neo4j_tracing
 import (
 	"context"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
@@ -12,6 +12,7 @@ import (
 // ManagedTransactionTracer wraps a neo4j.ManagedTransaction object so the calls can be traced with open telemetry distributed tracing
 type ManagedTransactionTracer struct {
 	neo4j.ManagedTransaction
+
 	ctx    context.Context
 	tracer trace.Tracer
 }
@@ -26,7 +27,7 @@ func NewManagedTransactionTracer(ctx context.Context, tx neo4j.ManagedTransactio
 }
 
 // Run calls neo4j.ManagedTransaction.Run and trace the call
-func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.ResultWithContext, err error) {
+func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) {
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -40,12 +41,13 @@ func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, param
 
 	result, err := t.ManagedTransaction.Run(ctx, cypher, params)
 
-	return NewResultWithContextTracer(spanCtx, result, t.tracer), err
+	return NewResultTracer(spanCtx, result, t.tracer), err
 }
 
 // ExplicitTransactionTracer wraps a neo4j.ExplicitTransaction object so the calls can be traced with open telemetry distributed tracing
 type ExplicitTransactionTracer struct {
 	neo4j.ExplicitTransaction
+
 	ctx    context.Context
 	txSpan trace.Span
 	tracer trace.Tracer
@@ -62,7 +64,7 @@ func NewExplicitTransactionTracer(ctx context.Context, tx neo4j.ExplicitTransact
 }
 
 // Run calls neo4j.ExplicitTransaction.Run and trace the call
-func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.ResultWithContext, err error) {
+func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) {
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -76,7 +78,7 @@ func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, para
 
 	result, err := t.ExplicitTransaction.Run(ctx, cypher, params)
 
-	return NewResultWithContextTracer(spanCtx, result, t.tracer), err
+	return NewResultTracer(spanCtx, result, t.tracer), err
 }
 
 // Commit calls neo4j.ExplicitTransaction.Commit and trace the call

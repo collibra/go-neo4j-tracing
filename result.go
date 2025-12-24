@@ -3,50 +3,51 @@ package neo4j_tracing
 import (
 	"context"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-type ResultWithContextTracer struct {
-	neo4j.ResultWithContext
+type ResultTracer struct {
+	neo4j.Result
+
 	ctx    context.Context
 	tracer trace.Tracer
 }
 
-func NewResultWithContextTracer(ctx context.Context, result neo4j.ResultWithContext, tracer trace.Tracer) neo4j.ResultWithContext {
-	return &ResultWithContextTracer{ResultWithContext: result, ctx: ctx, tracer: tracer}
+func NewResultTracer(ctx context.Context, result neo4j.Result, tracer trace.Tracer) neo4j.Result {
+	return &ResultTracer{Result: result, ctx: ctx, tracer: tracer}
 }
 
-func (r *ResultWithContextTracer) NextRecord(ctx context.Context, record **neo4j.Record) bool {
+func (r *ResultTracer) NextRecord(ctx context.Context, record **neo4j.Record) bool {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.NextRecord"), trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
-	return r.ResultWithContext.NextRecord(ctx, record)
+	return r.Result.NextRecord(ctx, record)
 }
 
-func (r *ResultWithContextTracer) Next(ctx context.Context) bool {
+func (r *ResultTracer) Next(ctx context.Context) bool {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Next"), trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
-	return r.ResultWithContext.Next(ctx)
+	return r.Result.Next(ctx)
 }
 
-func (r *ResultWithContextTracer) PeekRecord(ctx context.Context, record **neo4j.Record) bool {
+func (r *ResultTracer) PeekRecord(ctx context.Context, record **neo4j.Record) bool {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.PeekRecord"), trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
-	return r.ResultWithContext.PeekRecord(ctx, record)
+	return r.Result.PeekRecord(ctx, record)
 }
 
-func (r *ResultWithContextTracer) Peek(ctx context.Context) bool {
+func (r *ResultTracer) Peek(ctx context.Context) bool {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Peek"), trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
-	return r.ResultWithContext.Peek(ctx)
+	return r.Result.Peek(ctx)
 }
 
-func (r *ResultWithContextTracer) Collect(ctx context.Context) (_ []*neo4j.Record, err error) {
+func (r *ResultTracer) Collect(ctx context.Context) (_ []*neo4j.Record, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Collect"), trace.WithSpanKind(trace.SpanKindInternal))
 
 	defer func() {
@@ -58,10 +59,10 @@ func (r *ResultWithContextTracer) Collect(ctx context.Context) (_ []*neo4j.Recor
 		span.End()
 	}()
 
-	return r.ResultWithContext.Collect(ctx)
+	return r.Result.Collect(ctx)
 }
 
-func (r *ResultWithContextTracer) Single(ctx context.Context) (_ *neo4j.Record, err error) {
+func (r *ResultTracer) Single(ctx context.Context) (_ *neo4j.Record, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Single"), trace.WithSpanKind(trace.SpanKindInternal))
 
 	defer func() {
@@ -73,10 +74,10 @@ func (r *ResultWithContextTracer) Single(ctx context.Context) (_ *neo4j.Record, 
 		span.End()
 	}()
 
-	return r.ResultWithContext.Single(ctx)
+	return r.Result.Single(ctx)
 }
 
-func (r *ResultWithContextTracer) Consume(ctx context.Context) (_ neo4j.ResultSummary, err error) {
+func (r *ResultTracer) Consume(ctx context.Context) (_ neo4j.ResultSummary, err error) {
 	_, span := r.tracer.Start(r.ctx, spanName("Record.Consume"), trace.WithSpanKind(trace.SpanKindInternal))
 
 	defer func() {
@@ -88,5 +89,5 @@ func (r *ResultWithContextTracer) Consume(ctx context.Context) (_ neo4j.ResultSu
 		span.End()
 	}()
 
-	return r.ResultWithContext.Consume(ctx)
+	return r.Result.Consume(ctx)
 }

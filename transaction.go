@@ -2,6 +2,7 @@ package neo4j_tracing
 
 import (
 	"context"
+	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"go.opentelemetry.io/otel/codes"
@@ -9,25 +10,67 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type transactionTracerConfig struct {
+	metrics       *metrics
+	serverAddress string
+	dbNamespace   string
+}
+
+// TransactionTracerOption configures optional fields for transaction tracers.
+type TransactionTracerOption func(*transactionTracerConfig)
+
+// WithTransactionMetrics sets the metrics recorder for the transaction tracer.
+func WithTransactionMetrics(m *metrics) TransactionTracerOption {
+	return func(c *transactionTracerConfig) {
+		c.metrics = m
+	}
+}
+
+// WithTransactionServerAddress sets the server address attribute for metrics.
+func WithTransactionServerAddress(addr string) TransactionTracerOption {
+	return func(c *transactionTracerConfig) {
+		c.serverAddress = addr
+	}
+}
+
+// WithTransactionDBNamespace sets the database namespace attribute for metrics.
+func WithTransactionDBNamespace(ns string) TransactionTracerOption {
+	return func(c *transactionTracerConfig) {
+		c.dbNamespace = ns
+	}
+}
+
 // ManagedTransactionTracer wraps a neo4j.ManagedTransaction object so the calls can be traced with open telemetry distributed tracing
 type ManagedTransactionTracer struct {
 	neo4j.ManagedTransaction
 
-	ctx    context.Context
-	tracer trace.Tracer
+	ctx           context.Context
+	tracer        trace.Tracer
+	metrics       *metrics
+	serverAddress string
+	dbNamespace   string
 }
 
 // NewManagedTransactionTracer returns a new ManagedTransactionTracer that wraps a neo4j.ManagedTransaction with correct tracing details
-func NewManagedTransactionTracer(ctx context.Context, tx neo4j.ManagedTransaction, tracer trace.Tracer) *ManagedTransactionTracer {
+func NewManagedTransactionTracer(ctx context.Context, tx neo4j.ManagedTransaction, tracer trace.Tracer, opts ...TransactionTracerOption) *ManagedTransactionTracer {
+	cfg := transactionTracerConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
+
 	return &ManagedTransactionTracer{
 		ManagedTransaction: tx,
 		ctx:                ctx,
 		tracer:             tracer,
+		metrics:            cfg.metrics,
+		serverAddress:      cfg.serverAddress,
+		dbNamespace:        cfg.dbNamespace,
 	}
 }
 
 // Run calls neo4j.ManagedTransaction.Run and trace the call
-func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) {
+func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) { //nolint:dupl
+	start := time.Now()
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -37,34 +80,51 @@ func (t *ManagedTransactionTracer) Run(ctx context.Context, cypher string, param
 		}
 
 		span.End()
+		t.metrics.recordOperation(ctx, start, "Run", t.dbNamespace, t.serverAddress, err)
 	}()
 
 	result, err := t.ManagedTransaction.Run(ctx, cypher, params)
 
-	return NewResultTracer(spanCtx, result, t.tracer), err
+	return NewResultTracer(spanCtx, result, t.tracer,
+		WithResultMetrics(t.metrics),
+		WithResultServerAddress(t.serverAddress),
+		WithResultDBNamespace(t.dbNamespace),
+	), err
 }
 
 // ExplicitTransactionTracer wraps a neo4j.ExplicitTransaction object so the calls can be traced with open telemetry distributed tracing
 type ExplicitTransactionTracer struct {
 	neo4j.ExplicitTransaction
 
-	ctx    context.Context
-	txSpan trace.Span
-	tracer trace.Tracer
+	ctx           context.Context
+	txSpan        trace.Span
+	tracer        trace.Tracer
+	metrics       *metrics
+	serverAddress string
+	dbNamespace   string
 }
 
 // NewExplicitTransactionTracer returns a new ExplicitTransactionTracer that wraps a neo4j.ExplicitTransaction with correct tracing details
-func NewExplicitTransactionTracer(ctx context.Context, tx neo4j.ExplicitTransaction, txSpan trace.Span, tracer trace.Tracer) *ExplicitTransactionTracer {
+func NewExplicitTransactionTracer(ctx context.Context, tx neo4j.ExplicitTransaction, txSpan trace.Span, tracer trace.Tracer, opts ...TransactionTracerOption) *ExplicitTransactionTracer {
+	cfg := transactionTracerConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
+
 	return &ExplicitTransactionTracer{
 		ExplicitTransaction: tx,
 		ctx:                 ctx,
 		txSpan:              txSpan,
 		tracer:              tracer,
+		metrics:             cfg.metrics,
+		serverAddress:       cfg.serverAddress,
+		dbNamespace:         cfg.dbNamespace,
 	}
 }
 
 // Run calls neo4j.ExplicitTransaction.Run and trace the call
-func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) {
+func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, params map[string]any) (_ neo4j.Result, err error) { //nolint:dupl
+	start := time.Now()
 	spanCtx, span := t.tracer.Start(t.ctx, spanName("Run"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBStatement(cypher), semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -74,15 +134,21 @@ func (t *ExplicitTransactionTracer) Run(ctx context.Context, cypher string, para
 		}
 
 		span.End()
+		t.metrics.recordOperation(ctx, start, "Run", t.dbNamespace, t.serverAddress, err)
 	}()
 
 	result, err := t.ExplicitTransaction.Run(ctx, cypher, params)
 
-	return NewResultTracer(spanCtx, result, t.tracer), err
+	return NewResultTracer(spanCtx, result, t.tracer,
+		WithResultMetrics(t.metrics),
+		WithResultServerAddress(t.serverAddress),
+		WithResultDBNamespace(t.dbNamespace),
+	), err
 }
 
 // Commit calls neo4j.ExplicitTransaction.Commit and trace the call
 func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
+	start := time.Now()
 	_, span := t.tracer.Start(t.ctx, spanName("Commit"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -92,6 +158,7 @@ func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
 		}
 
 		span.End()
+		t.metrics.recordOperation(ctx, start, "Commit", t.dbNamespace, t.serverAddress, err)
 	}()
 
 	return t.ExplicitTransaction.Commit(ctx)
@@ -99,6 +166,7 @@ func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
 
 // Rollback calls neo4j.ExplicitTransaction.Rollback and trace the call
 func (t *ExplicitTransactionTracer) Rollback(ctx context.Context) (err error) {
+	start := time.Now()
 	_, span := t.tracer.Start(t.ctx, spanName("Rollback"), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(semconv.DBSystemNeo4j))
 
 	defer func() {
@@ -108,6 +176,7 @@ func (t *ExplicitTransactionTracer) Rollback(ctx context.Context) (err error) {
 		}
 
 		span.End()
+		t.metrics.recordOperation(ctx, start, "Rollback", t.dbNamespace, t.serverAddress, err)
 	}()
 
 	return t.ExplicitTransaction.Rollback(ctx)

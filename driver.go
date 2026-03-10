@@ -2,6 +2,8 @@ package neo4j_tracing
 
 import (
 	"context"
+	"net/url"
+	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j/auth"
@@ -13,7 +15,8 @@ import (
 
 // Neo4jTracer wraps a neo4j.Tracer object so the calls can be traced with open telemetry distributed tracing
 type Neo4jTracer struct {
-	tracer trace.Tracer
+	tracer  trace.Tracer
+	metrics *metrics
 }
 
 // NewNeo4jTracer creates an object that will wrap neo4j drivers with a tracing object
@@ -28,7 +31,8 @@ func NewNeo4jTracer(opts ...Option) *Neo4jTracer {
 	}
 
 	return &Neo4jTracer{
-		tracer: cfg.TraceProvider.Tracer(tracerName),
+		tracer:  cfg.TraceProvider.Tracer(tracerName),
+		metrics: newMetrics(cfg.MeterProvider),
 	}
 }
 
@@ -40,16 +44,22 @@ func (t *Neo4jTracer) NewDriver(target string, auth auth.TokenManager, configure
 		return nil, err
 	}
 
+	serverAddress := parseServerAddress(target)
+
 	return &DriverTracer{
-		Driver: driver,
-		tracer: t.tracer,
+		Driver:        driver,
+		tracer:        t.tracer,
+		metrics:       t.metrics,
+		serverAddress: serverAddress,
 	}, nil
 }
 
 type DriverTracer struct {
 	neo4j.Driver
 
-	tracer trace.Tracer
+	tracer        trace.Tracer
+	metrics       *metrics
+	serverAddress string
 }
 
 // NewSession calls neo4j.DriverWithContext.NewSession and wraps the resulting neo4j.SessionWithContext with a tracing object
@@ -70,17 +80,20 @@ func (n *DriverTracer) NewSession(ctx context.Context, config neo4j.SessionConfi
 	return &SessionTracer{
 		Session: n.Driver.NewSession(ctx, config),
 		tracer:  n.tracer,
+		metrics: n.metrics,
 		attributes: SessionAttributes{
 			DatabaseName: config.DatabaseName,
 			AccessMode:   config.AccessMode,
 			Bookmarks:    neo4j.CombineBookmarks(bookmarks...),
 			FetchSize:    config.FetchSize,
 		},
+		serverAddress: n.serverAddress,
 	}
 }
 
 // VerifyConnectivity calls neo4j.DriverWithContext.VerifyConnectivity and trace the call
 func (n *DriverTracer) VerifyConnectivity(ctx context.Context) (err error) {
+	start := time.Now()
 	spanCtx, span := n.tracer.Start(ctx, spanName("VerifyConnectivity"), trace.WithSpanKind(trace.SpanKindClient))
 
 	defer func() {
@@ -90,6 +103,7 @@ func (n *DriverTracer) VerifyConnectivity(ctx context.Context) (err error) {
 		}
 
 		span.End()
+		n.metrics.recordOperation(ctx, start, "VerifyConnectivity", "", n.serverAddress, err)
 	}()
 
 	return n.Driver.VerifyConnectivity(spanCtx)
@@ -97,6 +111,7 @@ func (n *DriverTracer) VerifyConnectivity(ctx context.Context) (err error) {
 
 // VerifyAuthentication calls neo4j.DriverWithContext.VerifyAuthentication and trace the call
 func (n *DriverTracer) VerifyAuthentication(ctx context.Context, auth *neo4j.AuthToken) (err error) {
+	start := time.Now()
 	spanCtx, span := n.tracer.Start(ctx, spanName("VerifyAuthentication"), trace.WithSpanKind(trace.SpanKindClient))
 
 	defer func() {
@@ -106,6 +121,7 @@ func (n *DriverTracer) VerifyAuthentication(ctx context.Context, auth *neo4j.Aut
 		}
 
 		span.End()
+		n.metrics.recordOperation(ctx, start, "VerifyAuthentication", "", n.serverAddress, err)
 	}()
 
 	return n.Driver.VerifyAuthentication(spanCtx, auth)
@@ -113,6 +129,7 @@ func (n *DriverTracer) VerifyAuthentication(ctx context.Context, auth *neo4j.Aut
 
 // GetServerInfo calls neo4j.GetServerInfo.VerifyConnectivity and trace the call
 func (n *DriverTracer) GetServerInfo(ctx context.Context) (_ neo4j.ServerInfo, err error) {
+	start := time.Now()
 	spanCtx, span := n.tracer.Start(ctx, spanName("GetServerInfo"), trace.WithSpanKind(trace.SpanKindClient))
 
 	defer func() {
@@ -122,7 +139,17 @@ func (n *DriverTracer) GetServerInfo(ctx context.Context) (_ neo4j.ServerInfo, e
 		}
 
 		span.End()
+		n.metrics.recordOperation(ctx, start, "GetServerInfo", "", n.serverAddress, err)
 	}()
 
 	return n.Driver.GetServerInfo(spanCtx)
+}
+
+func parseServerAddress(target string) string {
+	u, err := url.Parse(target)
+	if err != nil {
+		return target
+	}
+
+	return u.Hostname()
 }

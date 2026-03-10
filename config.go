@@ -1,9 +1,13 @@
 package neo4j_tracing
 
-import "go.opentelemetry.io/otel/trace"
+import (
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
+)
 
 type config struct {
 	TraceProvider trace.TracerProvider
+	MeterProvider metric.MeterProvider
 }
 
 type Option interface {
@@ -21,5 +25,13 @@ func (o optionFunc) apply(c *config) {
 func WithTracerProvider(tp trace.TracerProvider) Option {
 	return optionFunc(func(c *config) {
 		c.TraceProvider = tp
+	})
+}
+
+// WithMeterProvider specifies a meter provider to use for recording metrics.
+// If none is specified, metrics are not recorded.
+func WithMeterProvider(mp metric.MeterProvider) Option {
+	return optionFunc(func(c *config) {
+		c.MeterProvider = mp
 	})
 }

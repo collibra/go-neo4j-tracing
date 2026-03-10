@@ -77,6 +77,8 @@ func (n *DriverTracer) NewSession(ctx context.Context, config neo4j.SessionConfi
 		}
 	}
 
+	n.metrics.recordSessionOpen(ctx, n.serverAddress)
+
 	return &SessionTracer{
 		Session: n.Driver.NewSession(ctx, config),
 		tracer:  n.tracer,

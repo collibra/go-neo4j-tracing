@@ -8,15 +8,60 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type resultTracerConfig struct {
+	metrics       *metrics
+	serverAddress string
+	dbNamespace   string
+}
+
+// ResultTracerOption configures optional fields for the result tracer.
+type ResultTracerOption func(*resultTracerConfig)
+
+// WithResultMetrics sets the metrics recorder for the result tracer.
+func WithResultMetrics(m *metrics) ResultTracerOption {
+	return func(c *resultTracerConfig) {
+		c.metrics = m
+	}
+}
+
+// WithResultServerAddress sets the server address attribute for metrics.
+func WithResultServerAddress(addr string) ResultTracerOption {
+	return func(c *resultTracerConfig) {
+		c.serverAddress = addr
+	}
+}
+
+// WithResultDBNamespace sets the database namespace attribute for metrics.
+func WithResultDBNamespace(ns string) ResultTracerOption {
+	return func(c *resultTracerConfig) {
+		c.dbNamespace = ns
+	}
+}
+
 type ResultTracer struct {
 	neo4j.Result
 
-	ctx    context.Context
-	tracer trace.Tracer
+	ctx           context.Context
+	tracer        trace.Tracer
+	metrics       *metrics
+	serverAddress string
+	dbNamespace   string
 }
 
-func NewResultTracer(ctx context.Context, result neo4j.Result, tracer trace.Tracer) neo4j.Result {
-	return &ResultTracer{Result: result, ctx: ctx, tracer: tracer}
+func NewResultTracer(ctx context.Context, result neo4j.Result, tracer trace.Tracer, opts ...ResultTracerOption) neo4j.Result {
+	cfg := resultTracerConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
+
+	return &ResultTracer{
+		Result:        result,
+		ctx:           ctx,
+		tracer:        tracer,
+		metrics:       cfg.metrics,
+		serverAddress: cfg.serverAddress,
+		dbNamespace:   cfg.dbNamespace,
+	}
 }
 
 func (r *ResultTracer) NextRecord(ctx context.Context, record **neo4j.Record) bool {
@@ -74,7 +119,17 @@ func (r *ResultTracer) Single(ctx context.Context) (_ *neo4j.Record, err error) 
 		span.End()
 	}()
 
-	return r.Result.Single(ctx)
+	record, err := r.Result.Single(ctx)
+	if err != nil {
+		return record, err
+	}
+
+	summary, consumeErr := r.Result.Consume(ctx)
+	if consumeErr == nil {
+		r.metrics.recordResultSummary(ctx, summary, r.dbNamespace, r.serverAddress)
+	}
+
+	return record, err
 }
 
 func (r *ResultTracer) Consume(ctx context.Context) (_ neo4j.ResultSummary, err error) {
@@ -89,5 +144,10 @@ func (r *ResultTracer) Consume(ctx context.Context) (_ neo4j.ResultSummary, err 
 		span.End()
 	}()
 
-	return r.Result.Consume(ctx)
+	summary, err := r.Result.Consume(ctx)
+	if err == nil {
+		r.metrics.recordResultSummary(ctx, summary, r.dbNamespace, r.serverAddress)
+	}
+
+	return summary, err
 }

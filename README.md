@@ -62,7 +62,61 @@ func main() {
 ```
 
 ### Options
-The following options could be used to customize the tracing behavior:
+The following options could be used to customize the tracing and metrics behavior:
 - `WithTracerProvider(provider)`: Specifies a custom tracer provider. By default, the global OpenTelemetry tracer provider is used.
+- `WithMeterProvider(provider)`: Specifies a meter provider to use for recording metrics. If none is specified, metrics are not recorded.
 
 Those options are passed as argument to the `neo4j_tracing.NewNeo4jTracer()` function.
+
+## Enable metrics
+Metrics can be enabled by passing a `WithMeterProvider` option to the `NewNeo4jTracer` function:
+
+```go
+package main
+
+import (
+    "github.com/neo4j/neo4j-go-driver/v6/neo4j"
+    neo4j_tracing "github.com/collibra/go-neo4j-tracing"
+    sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+)
+
+func main() {
+    // Set up your meter provider (e.g., with an OTLP exporter)
+    mp := sdkmetric.NewMeterProvider()
+    defer mp.Shutdown(context.Background())
+
+    driverFactory := neo4j_tracing.NewNeo4jTracer(
+        neo4j_tracing.WithMeterProvider(mp),
+    )
+
+    dbUri := "neo4j://localhost"
+    driver, err := driverFactory.NewDriver(dbUri, neo4j.BasicAuth("neo4j", "letmein!", ""))
+    if err != nil {
+        panic(err)
+    }
+    // Do something useful
+}
+```
+
+### Available metrics
+
+#### Core metrics (recorded for every operation)
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `db.client.operation.duration` | Float64Histogram (seconds) | Client-side duration of each operation |
+| `db.client.operation.count` | Int64Counter | Total number of operations executed |
+| `db.client.error.count` | Int64Counter | Total number of failed operations |
+
+Common attributes: `db.system.name="neo4j"`, `db.operation.name`, `db.namespace`, `server.address`, `error.type` (on failure).
+
+#### ResultSummary metrics (recorded on `Consume()` / `Single()` calls)
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `db.client.result.available_after` | Float64Histogram (seconds) | Server-side time until result was available |
+| `db.client.result.consumed_after` | Float64Histogram (seconds) | Server-side time to consume result |
+| `db.client.result.nodes_created` | Int64Counter | Cumulative nodes created |
+| `db.client.result.nodes_deleted` | Int64Counter | Cumulative nodes deleted |
+| `db.client.result.relationships_created` | Int64Counter | Cumulative relationships created |
+| `db.client.result.relationships_deleted` | Int64Counter | Cumulative relationships deleted |

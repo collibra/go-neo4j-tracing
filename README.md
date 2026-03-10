@@ -13,7 +13,7 @@
 [//]: # ([![Go Reference]&#40;https://pkg.go.dev/badge/github.com/raito-io/neo4j-tracing.svg&#41;]&#40;https://pkg.go.dev/github.com/raito-io/neo4j-tracing&#41;)
 
 ## Introduction
-`neo4jtracing` is a go library that enables otel distribute tracing for neo4j driver v5. 
+`neo4jtracing` is a go library that enables otel distribute tracing for neo4j driver v6.
 
 ## Getting Started
 Add this library as a dependency via `go get github.com/collibra/go-neo4j-tracing`
@@ -27,12 +27,12 @@ Start using tracing is very easy. A regular neo4j driver will be created as foll
 package main
 
 import (
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 )
 
 func main() {
     dbUri := "neo4j://localhost" // scheme://host(:port) (default port is 7687)
-    driver, err := neo4j.NewDriverWithContext(dbUri, neo4j.BasicAuth("neo4j", "letmein!", ""))
+    driver, err := neo4j.NewDriver(dbUri, neo4j.BasicAuth("neo4j", "letmein!", ""))
     if err != nil {
         panic(err)
     }
@@ -45,15 +45,15 @@ To enable tracing you need to create your driver by using the `Neo4jTracer` obje
 package main
 
 import (
-    "github.com/neo4j/neo4j-go-driver/v5/neo4j"
+    "github.com/neo4j/neo4j-go-driver/v6/neo4j"
     neo4j_tracing "github.com/collibra/go-neo4j-tracing"
 )
 
 func main() {
     driverFactory := neo4j_tracing.NewNeo4jTracer()
-	
+
     dbUri := "neo4j://localhost" // scheme://host(:port) (default port is 7687)
-    driver, err := driverFactory.NewDriverWithContext(dbUri, neo4j.BasicAuth("neo4j", "letmein!", ""))
+    driver, err := driverFactory.NewDriver(dbUri, neo4j.BasicAuth("neo4j", "letmein!", ""))
     if err != nil {
         panic(err)
     }
@@ -120,3 +120,30 @@ Common attributes: `db.system.name="neo4j"`, `db.operation.name`, `db.namespace`
 | `db.client.result.nodes_deleted` | Int64Counter | Cumulative nodes deleted |
 | `db.client.result.relationships_created` | Int64Counter | Cumulative relationships created |
 | `db.client.result.relationships_deleted` | Int64Counter | Cumulative relationships deleted |
+| `db.client.result.properties_set` | Int64Counter | Cumulative properties set |
+| `db.client.result.labels_added` | Int64Counter | Cumulative labels added |
+| `db.client.result.labels_removed` | Int64Counter | Cumulative labels removed |
+| `db.client.result.indexes_added` | Int64Counter | Cumulative indexes added |
+| `db.client.result.indexes_removed` | Int64Counter | Cumulative indexes removed |
+| `db.client.result.constraints_added` | Int64Counter | Cumulative constraints added |
+| `db.client.result.constraints_removed` | Int64Counter | Cumulative constraints removed |
+| `db.client.result.system_updates` | Int64Counter | Cumulative system updates |
+
+#### Session lifecycle metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `db.client.session.count` | Int64Counter | Total sessions created |
+| `db.client.session.active` | Int64UpDownCounter | Currently active sessions |
+
+Attributes: `db.system.name="neo4j"`, `server.address`.
+
+#### Transaction lifecycle metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `db.client.transaction.count` | Int64Counter | Total transactions started |
+| `db.client.transaction.commit.count` | Int64Counter | Committed transactions |
+| `db.client.transaction.rollback.count` | Int64Counter | Rolled back transactions |
+
+Attributes: `db.system.name="neo4j"`, `db.namespace`, `server.address`.

@@ -36,6 +36,19 @@ func TestNewMetrics_WithProvider(t *testing.T) {
 	assert.NotNil(t, m.nodesDeleted)
 	assert.NotNil(t, m.relationshipsCreated)
 	assert.NotNil(t, m.relationshipsDeleted)
+	assert.NotNil(t, m.propertiesSet)
+	assert.NotNil(t, m.labelsAdded)
+	assert.NotNil(t, m.labelsRemoved)
+	assert.NotNil(t, m.indexesAdded)
+	assert.NotNil(t, m.indexesRemoved)
+	assert.NotNil(t, m.constraintsAdded)
+	assert.NotNil(t, m.constraintsRemoved)
+	assert.NotNil(t, m.systemUpdates)
+	assert.NotNil(t, m.sessionCount)
+	assert.NotNil(t, m.sessionActive)
+	assert.NotNil(t, m.transactionCount)
+	assert.NotNil(t, m.transactionCommit)
+	assert.NotNil(t, m.transactionRollback)
 }
 
 func TestMetrics_RecordOperation_NilSafe(t *testing.T) {
@@ -338,6 +351,247 @@ func TestMetrics_DriverVerifyConnectivity_WithMetrics(t *testing.T) {
 	assertHasAttribute(t, opCount, attrDBOpName, "VerifyConnectivity")
 }
 
+func TestMetrics_RecordResultSummary_AllCounters(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+
+	ctx := context.Background()
+	summary := &mockResultSummaryWithCounters{
+		availableAfter: 50 * time.Millisecond,
+		consumedAfter:  100 * time.Millisecond,
+		counters: &mockCounters{
+			nodesCreated:         3,
+			nodesDeleted:         1,
+			relationshipsCreated: 2,
+			relationshipsDeleted: 0,
+			propertiesSet:        5,
+			labelsAdded:          4,
+			labelsRemoved:        2,
+			indexesAdded:         1,
+			indexesRemoved:       0,
+			constraintsAdded:     1,
+			constraintsRemoved:   0,
+			systemUpdates:        3,
+		},
+	}
+
+	m.recordResultSummary(ctx, summary, "testdb", "localhost")
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+
+	metrics := collectMetricsByName(rm)
+
+	propertiesSet, ok := metrics["db.client.result.properties_set"]
+	require.True(t, ok)
+	assertCounterValue(t, propertiesSet, 5)
+
+	labelsAdded, ok := metrics["db.client.result.labels_added"]
+	require.True(t, ok)
+	assertCounterValue(t, labelsAdded, 4)
+
+	labelsRemoved, ok := metrics["db.client.result.labels_removed"]
+	require.True(t, ok)
+	assertCounterValue(t, labelsRemoved, 2)
+
+	indexesAdded, ok := metrics["db.client.result.indexes_added"]
+	require.True(t, ok)
+	assertCounterValue(t, indexesAdded, 1)
+
+	indexesRemoved, ok := metrics["db.client.result.indexes_removed"]
+	require.True(t, ok)
+	assertCounterValue(t, indexesRemoved, 0)
+
+	constraintsAdded, ok := metrics["db.client.result.constraints_added"]
+	require.True(t, ok)
+	assertCounterValue(t, constraintsAdded, 1)
+
+	constraintsRemoved, ok := metrics["db.client.result.constraints_removed"]
+	require.True(t, ok)
+	assertCounterValue(t, constraintsRemoved, 0)
+
+	systemUpdates, ok := metrics["db.client.result.system_updates"]
+	require.True(t, ok)
+	assertCounterValue(t, systemUpdates, 3)
+}
+
+func TestMetrics_RecordSessionOpenClose(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+
+	ctx := context.Background()
+
+	m.recordSessionOpen(ctx, "localhost")
+	m.recordSessionOpen(ctx, "localhost")
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+
+	metrics := collectMetricsByName(rm)
+
+	sessionCount, ok := metrics["db.client.session.count"]
+	require.True(t, ok)
+	assertCounterValue(t, sessionCount, 2)
+
+	sessionActive, ok := metrics["db.client.session.active"]
+	require.True(t, ok)
+	assertUpDownCounterValue(t, sessionActive, 2)
+
+	// Close one session
+	m.recordSessionClose(ctx, "localhost")
+
+	rm = metricdata.ResourceMetrics{}
+	require.NoError(t, reader.Collect(ctx, &rm))
+
+	metrics = collectMetricsByName(rm)
+
+	sessionActive, ok = metrics["db.client.session.active"]
+	require.True(t, ok)
+	assertUpDownCounterValue(t, sessionActive, 1)
+}
+
+func TestMetrics_RecordSessionOpen_NilSafe(t *testing.T) {
+	var m *metrics
+	// Should not panic
+	m.recordSessionOpen(context.Background(), "localhost")
+}
+
+func TestMetrics_RecordSessionClose_NilSafe(t *testing.T) {
+	var m *metrics
+	// Should not panic
+	m.recordSessionClose(context.Background(), "localhost")
+}
+
+func TestMetrics_RecordTransactionLifecycle(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+
+	ctx := context.Background()
+
+	m.recordTransactionStart(ctx, "testdb", "localhost")
+	m.recordTransactionStart(ctx, "testdb", "localhost")
+	m.recordTransactionCommit(ctx, "testdb", "localhost")
+	m.recordTransactionRollback(ctx, "testdb", "localhost")
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+
+	metrics := collectMetricsByName(rm)
+
+	txCount, ok := metrics["db.client.transaction.count"]
+	require.True(t, ok)
+	assertCounterValue(t, txCount, 2)
+
+	commitCount, ok := metrics["db.client.transaction.commit.count"]
+	require.True(t, ok)
+	assertCounterValue(t, commitCount, 1)
+
+	rollbackCount, ok := metrics["db.client.transaction.rollback.count"]
+	require.True(t, ok)
+	assertCounterValue(t, rollbackCount, 1)
+}
+
+func TestMetrics_RecordTransaction_NilSafe(t *testing.T) {
+	var m *metrics
+	// Should not panic
+	m.recordTransactionStart(context.Background(), "testdb", "localhost")
+	m.recordTransactionCommit(context.Background(), "testdb", "localhost")
+	m.recordTransactionRollback(context.Background(), "testdb", "localhost")
+}
+
+func TestMetrics_SessionOpenClose_ViaDriverAndSession(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+	ctx := context.Background()
+
+	driverTracer := &DriverTracer{
+		Driver:        &mockDriver{},
+		tracer:        noopTracer(),
+		metrics:       m,
+		serverAddress: "localhost",
+	}
+
+	session := driverTracer.NewSession(ctx, neo4j.SessionConfig{})
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+	metrics := collectMetricsByName(rm)
+
+	sessionCount, ok := metrics["db.client.session.count"]
+	require.True(t, ok)
+	assertCounterValue(t, sessionCount, 1)
+
+	sessionActive, ok := metrics["db.client.session.active"]
+	require.True(t, ok)
+	assertUpDownCounterValue(t, sessionActive, 1)
+
+	// Close the session
+	err := session.Close(ctx)
+	require.NoError(t, err)
+
+	rm = metricdata.ResourceMetrics{}
+	require.NoError(t, reader.Collect(ctx, &rm))
+	metrics = collectMetricsByName(rm)
+
+	sessionActive, ok = metrics["db.client.session.active"]
+	require.True(t, ok)
+	assertUpDownCounterValue(t, sessionActive, 0)
+}
+
+func TestMetrics_TransactionCommit_ViaExplicitTransaction(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+	ctx := context.Background()
+
+	_, span := noopTracer().Start(ctx, "test")
+	txTracer := NewExplicitTransactionTracer(ctx, &mockExplicitTransaction{}, span, noopTracer(),
+		WithTransactionMetrics(m),
+		WithTransactionServerAddress("localhost"),
+		WithTransactionDBNamespace("testdb"),
+	)
+
+	err := txTracer.Commit(ctx)
+	require.NoError(t, err)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+	metrics := collectMetricsByName(rm)
+
+	commitCount, ok := metrics["db.client.transaction.commit.count"]
+	require.True(t, ok)
+	assertCounterValue(t, commitCount, 1)
+}
+
+func TestMetrics_TransactionRollback_ViaExplicitTransaction(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	m := newMetrics(mp)
+	ctx := context.Background()
+
+	_, span := noopTracer().Start(ctx, "test")
+	txTracer := NewExplicitTransactionTracer(ctx, &mockExplicitTransaction{}, span, noopTracer(),
+		WithTransactionMetrics(m),
+		WithTransactionServerAddress("localhost"),
+		WithTransactionDBNamespace("testdb"),
+	)
+
+	err := txTracer.Rollback(ctx)
+	require.NoError(t, err)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(ctx, &rm))
+	metrics := collectMetricsByName(rm)
+
+	rollbackCount, ok := metrics["db.client.transaction.rollback.count"]
+	require.True(t, ok)
+	assertCounterValue(t, rollbackCount, 1)
+}
+
 // --- Test helpers ---
 
 func noopTracer() trace.Tracer {
@@ -383,6 +637,14 @@ type mockCounters struct {
 	nodesDeleted         int
 	relationshipsCreated int
 	relationshipsDeleted int
+	propertiesSet        int
+	labelsAdded          int
+	labelsRemoved        int
+	indexesAdded         int
+	indexesRemoved       int
+	constraintsAdded     int
+	constraintsRemoved   int
+	systemUpdates        int
 }
 
 func (c *mockCounters) ContainsUpdates() bool       { return true }
@@ -390,15 +652,15 @@ func (c *mockCounters) NodesCreated() int           { return c.nodesCreated }
 func (c *mockCounters) NodesDeleted() int           { return c.nodesDeleted }
 func (c *mockCounters) RelationshipsCreated() int   { return c.relationshipsCreated }
 func (c *mockCounters) RelationshipsDeleted() int   { return c.relationshipsDeleted }
-func (c *mockCounters) PropertiesSet() int          { return 0 }
-func (c *mockCounters) LabelsAdded() int            { return 0 }
-func (c *mockCounters) LabelsRemoved() int          { return 0 }
-func (c *mockCounters) IndexesAdded() int           { return 0 }
-func (c *mockCounters) IndexesRemoved() int         { return 0 }
-func (c *mockCounters) ConstraintsAdded() int       { return 0 }
-func (c *mockCounters) ConstraintsRemoved() int     { return 0 }
-func (c *mockCounters) SystemUpdates() int          { return 0 }
-func (c *mockCounters) ContainsSystemUpdates() bool { return false }
+func (c *mockCounters) PropertiesSet() int          { return c.propertiesSet }
+func (c *mockCounters) LabelsAdded() int            { return c.labelsAdded }
+func (c *mockCounters) LabelsRemoved() int          { return c.labelsRemoved }
+func (c *mockCounters) IndexesAdded() int           { return c.indexesAdded }
+func (c *mockCounters) IndexesRemoved() int         { return c.indexesRemoved }
+func (c *mockCounters) ConstraintsAdded() int       { return c.constraintsAdded }
+func (c *mockCounters) ConstraintsRemoved() int     { return c.constraintsRemoved }
+func (c *mockCounters) SystemUpdates() int          { return c.systemUpdates }
+func (c *mockCounters) ContainsSystemUpdates() bool { return c.systemUpdates > 0 }
 
 // collectMetricsByName collects all metrics from ResourceMetrics into a map by name.
 func collectMetricsByName(rm metricdata.ResourceMetrics) map[string]metricdata.Metrics {
@@ -415,6 +677,24 @@ func collectMetricsByName(rm metricdata.ResourceMetrics) map[string]metricdata.M
 
 // assertCounterValue asserts the sum of all data points in a counter metric.
 func assertCounterValue(t *testing.T, m metricdata.Metrics, expected int64) {
+	t.Helper()
+
+	sum, ok := m.Data.(metricdata.Sum[int64])
+	if !ok {
+		t.Fatalf("expected Sum[int64] for metric %s, got %T", m.Name, m.Data)
+	}
+
+	var total int64
+
+	for _, dp := range sum.DataPoints {
+		total += dp.Value
+	}
+
+	assert.Equal(t, expected, total, "metric %s", m.Name)
+}
+
+// assertUpDownCounterValue asserts the sum of all data points in an up-down counter metric.
+func assertUpDownCounterValue(t *testing.T, m metricdata.Metrics, expected int64) {
 	t.Helper()
 
 	sum, ok := m.Data.(metricdata.Sum[int64])

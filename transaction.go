@@ -159,6 +159,10 @@ func (t *ExplicitTransactionTracer) Commit(ctx context.Context) (err error) {
 
 		span.End()
 		t.metrics.recordOperation(ctx, start, "Commit", t.dbNamespace, t.serverAddress, err)
+
+		if err == nil {
+			t.metrics.recordTransactionCommit(ctx, t.dbNamespace, t.serverAddress)
+		}
 	}()
 
 	return t.ExplicitTransaction.Commit(ctx)
@@ -177,6 +181,10 @@ func (t *ExplicitTransactionTracer) Rollback(ctx context.Context) (err error) {
 
 		span.End()
 		t.metrics.recordOperation(ctx, start, "Rollback", t.dbNamespace, t.serverAddress, err)
+
+		if err == nil {
+			t.metrics.recordTransactionRollback(ctx, t.dbNamespace, t.serverAddress)
+		}
 	}()
 
 	return t.ExplicitTransaction.Rollback(ctx)

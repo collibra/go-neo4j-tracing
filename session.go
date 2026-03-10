@@ -36,6 +36,13 @@ type SessionTracer struct {
 	serverAddress string
 }
 
+// Close calls neo4j.Session.Close and records the session close metric.
+func (s *SessionTracer) Close(ctx context.Context) error {
+	s.metrics.recordSessionClose(ctx, s.serverAddress)
+
+	return s.Session.Close(ctx)
+}
+
 // BeginTransaction calls neo4j.SessionWithContext.BeginTransaction and trace the call
 func (s *SessionTracer) BeginTransaction(ctx context.Context, configurers ...func(config *neo4j.TransactionConfig)) (neo4j.ExplicitTransaction, error) {
 	start := time.Now()
@@ -58,6 +65,7 @@ func (s *SessionTracer) BeginTransaction(ctx context.Context, configurers ...fun
 	}
 
 	s.metrics.recordOperation(ctx, start, "BeginTransaction", s.attributes.DatabaseName, s.serverAddress, nil)
+	s.metrics.recordTransactionStart(ctx, s.attributes.DatabaseName, s.serverAddress)
 
 	return NewExplicitTransactionTracer(spanCtx, tx, span, s.tracer,
 		WithTransactionMetrics(s.metrics),

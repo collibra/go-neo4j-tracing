@@ -24,7 +24,7 @@ jobs:
         run: go mod tidy
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9  # v8
         with:
           version: v2.11.2
 
@@ -35,7 +35,7 @@ jobs:
         run: go test ./...
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v6
+        uses: sonarsource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602  # v6
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_PUBLIC_API_KEY }}
           SONAR_HOST_URL: https://sonarqube.collibra.dev
@@ -52,6 +52,6 @@ jobs:
 #          SONAR_HOST_URL: https://sonarqube.collibra.dev
 
       - name: FOSSA Scan
-        uses: fossas/fossa-action@v1
+        uses: fossas/fossa-action@ff70fe9fe17cbd2040648f1c45e8ec4e4884dcf3  # v1
         with:
           api-key: ${{ secrets.FOSSA_PUBLIC_API_KEY }}
